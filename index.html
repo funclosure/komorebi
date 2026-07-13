@@ -381,7 +381,7 @@
   stays open as a second source feeding the same compositor.</p>
 </footer>
 
-<script>
+<script id="engine">
 (function(){
   'use strict';
 
@@ -691,5 +691,81 @@
   applyLayerStyle();
   applyDay();
   resize();
+
+  /* playground hook — not part of the effect; omit when porting */
+  window.__komorebi = {
+    get seed(){ return state.seed; },
+    setSeed(n){ state.seed = n >>> 0; rebuild(); dirty = true; }
+  };
+})();
+</script>
+
+<script id="playground">
+(function(){
+  'use strict';
+  const hook = window.__komorebi;
+
+  const RANGES = { presence:[4,32], blur:[2,36], reach:[60,170], wind:[0,200] };
+  const DOORS = ['branch','dapple','drift'];
+  const DAY_TINTS = ['empty','gold','sage','dusk'];
+  const SLIDER_IDS = { presence:'presence', blur:'blur', reach:'scale', wind:'wind' };
+
+  function currentState(){
+    return {
+      door: document.querySelector('.seg[aria-pressed="true"]').dataset.variant,
+      presence: +document.getElementById('presence').value,
+      blur: +document.getElementById('blur').value,
+      reach: +document.getElementById('scale').value,
+      wind: +document.getElementById('wind').value,
+      day: document.querySelector('.sw[aria-pressed="true"]').dataset.tint,
+      card: document.getElementById('washCard').checked ? 1 : 0,
+      seed: hook.seed
+    };
+  }
+
+  function stateToHash(s){
+    const p = new URLSearchParams();
+    for (const k of ['door','presence','blur','reach','wind','day','card','seed']) p.set(k, s[k]);
+    return '#' + p.toString();
+  }
+
+  function writeHash(){
+    history.replaceState(null, '', location.href.split('#')[0] + stateToHash(currentState()));
+  }
+
+  function applyHash(){
+    if (location.hash.length < 2) return;
+    const p = new URLSearchParams(location.hash.slice(1));
+    for (const key in SLIDER_IDS){
+      if (!p.has(key)) continue;
+      const n = parseFloat(p.get(key));
+      if (!isFinite(n)) continue;
+      const el = document.getElementById(SLIDER_IDS[key]);
+      el.value = Math.min(RANGES[key][1], Math.max(RANGES[key][0], Math.round(n)));
+      el.dispatchEvent(new Event('input'));
+    }
+    const door = p.get('door');
+    if (DOORS.includes(door)) document.querySelector('.seg[data-variant="' + door + '"]').click();
+    const day = p.get('day');
+    if (DAY_TINTS.includes(day)) document.querySelector('.sw[data-tint="' + day + '"]').click();
+    if (p.has('card')){
+      const el = document.getElementById('washCard');
+      const on = p.get('card') !== '0';
+      if (el.checked !== on){ el.checked = on; el.dispatchEvent(new Event('change')); }
+    }
+    const seed = parseInt(p.get('seed'), 10);
+    if (isFinite(seed) && seed > 0) hook.setSeed(seed);
+  }
+
+  /* restore first, THEN start writing — restore must not rewrite the hash */
+  applyHash();
+  Object.values(SLIDER_IDS).forEach(function(id){
+    document.getElementById(id).addEventListener('input', writeHash);
+  });
+  document.getElementById('washCard').addEventListener('change', writeHash);
+  document.querySelectorAll('.seg, .sw').forEach(function(b){ b.addEventListener('click', writeHash); });
+  document.getElementById('regrow').addEventListener('click', writeHash);
+
+  window.__playground = { currentState: currentState, stateToHash: stateToHash, applyHash: applyHash };
 })();
 </script>
