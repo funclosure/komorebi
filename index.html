@@ -127,6 +127,7 @@
   .label-row .name{font-size:14.5px}
   .label-row .name .hz{color:var(--quiet); margin-left:.45em; font-size:13px}
   .label-row output{font-family:var(--sans); font-size:12px; color:var(--quiet); font-variant-numeric:tabular-nums}
+  .label-row.stack{margin-top:14px}
 
   /* variant segments */
   .segments{display:flex; gap:6px}
@@ -225,6 +226,30 @@
     color:var(--quiet); font-size:14px;
   }
   footer.page p{max-width:70ch; margin:0}
+
+  /* ============ viewport fit — two-column layout only ============ */
+  @media (min-width:921px) and (max-height:1360px){
+    header.page{padding:28px 0 20px}
+    header.page h1{margin:8px 0}
+    header.page .dek{margin:0}
+    .stage{padding-top:20px}
+    .panel{padding:16px 20px 12px}
+    .panel h2{margin-bottom:2px}
+    .panel .group{padding:10px 0 8px}
+    .label-row{margin-bottom:6px}
+    .label-row.stack{margin-top:8px}
+    .seg{padding:7px 4px 4px}
+  }
+  @media (min-width:921px) and (max-height:1080px){
+    header.page .dek{display:none}
+    .sw-note{display:none}
+    .take-note{display:none}
+    .sw{width:30px; height:30px}
+    .stage{padding-top:14px}
+    .panel{padding:12px 18px 8px}
+    .panel .group{padding:7px 0 5px}
+    .phone{width:min(372px, 90vw, calc((100dvh - 152px) * 0.4723))}
+  }
 </style>
 
 <header class="page wrap">
@@ -279,12 +304,12 @@
           <output id="presenceOut">14%</output>
         </div>
         <input type="range" id="presence" min="4" max="32" value="14" aria-label="shadow presence">
-        <div class="label-row" style="margin-top:14px">
+        <div class="label-row stack">
           <span class="name">softness<span class="hz">柔</span></span>
           <output id="blurOut">16 px</output>
         </div>
         <input type="range" id="blur" min="2" max="36" value="16" aria-label="shadow softness">
-        <div class="label-row" style="margin-top:14px">
+        <div class="label-row stack">
           <span class="name">reach<span class="hz">幅</span></span>
           <output id="scaleOut">1.0×</output>
         </div>
