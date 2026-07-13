@@ -43,7 +43,8 @@ The laptop class; additionally:
 
 - Hide the explanatory copy: `.dek`, `.sw-note`, `.take-note` (`display:none`)
 - Swatches `.sw` 34px → 30px
-- `.stage` padding-top → 14; `.panel .group` padding → 8/6
+- `.stage` padding-top → 14; `.panel` padding → 12/18/8; `.panel .group`
+  padding → 7/5 (deep enough that ~820px-tall viewports also fit)
 - Cap the phone by viewport height:
   `.phone{ width: min(372px, 90vw, calc((100dvh - 150px) * 0.4724)); }`
   (0.4724 = 393/832, the phone's aspect ratio; 150px ≈ compact header +
