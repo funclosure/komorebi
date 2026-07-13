@@ -46,9 +46,9 @@ The laptop class; additionally:
 - `.stage` padding-top → 14; `.panel` padding → 12/18/8; `.panel .group`
   padding → 7/5 (deep enough that ~820px-tall viewports also fit)
 - Cap the phone by viewport height:
-  `.phone{ width: min(372px, 90vw, calc((100dvh - 150px) * 0.4724)); }`
-  (0.4724 = 393/832, the phone's aspect ratio; 150px ≈ compact header +
-  stage padding + breathing room)
+  `.phone{ width: min(372px, 90vw, calc((100dvh - 152px) * 0.4723)); }`
+  (0.4723 rounds down from 393/832 (rounding up overflows the viewport by a sub-pixel), the phone's aspect ratio; 152px ≈ compact header +
+  stage padding + rounding slack)
 
 ### HTML change (page chrome, not engine)
 

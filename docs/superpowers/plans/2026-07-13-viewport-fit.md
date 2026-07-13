@@ -84,11 +84,11 @@ At the end of the `<style>` block, immediately before `</style>`, add:
     .stage{padding-top:14px}
     .panel{padding:12px 18px 8px}
     .panel .group{padding:7px 0 5px}
-    .phone{width:min(372px, 90vw, calc((100dvh - 150px) * 0.4724))}
+    .phone{width:min(372px, 90vw, calc((100dvh - 152px) * 0.4723))}
   }
 ```
 
-(0.4724 = 393/832, the phone's aspect ratio. Later rules of equal specificity win, so the tier-2 `.phone` width overrides the base `width:min(372px,90vw)` without `!important`.)
+(0.4723 rounds down from 393/832 (rounding up overflows the viewport by a sub-pixel), the phone's aspect ratio. Later rules of equal specificity win, so the tier-2 `.phone` width overrides the base `width:min(372px,90vw)` without `!important`.)
 
 - [ ] **Step 4: Verify at laptop heights (tier 2)**
 
