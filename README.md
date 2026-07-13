@@ -5,6 +5,8 @@ Light through a tree, landing on paper — a procedural tree-shadow backdrop
 
 **Play with it: https://funclosure.github.io/komorebi/**
 
+繁體中文：頁面右上角有 EN／中文 切換。
+
 Tune the three doors — 枝 branch, 隙 dapple, 葉 drift — then:
 
 - **copy the prompt** — one click copies a Claude Code prompt carrying your
