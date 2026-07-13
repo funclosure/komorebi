@@ -1,0 +1,715 @@
+# 樹影 — tree-shadow backdrop prototype
+*A prompt for Claude Code. Copy everything below the line into a Claude Code session in your own repo. This version reproduces the original design exactly; if you'd rather let your agent design its own take on the idea, use the sibling file `tree-shadow-prompt-freeform.md` in this gist.*
+
+---
+
+Build me an interactive prototype of a **tree-shadow backdrop** (樹影 / komorebi) for my app's home screen — dappled leaf-shadow falling across the UI the way light through a tree lands on a wall, generated procedurally on a Canvas (no WebGL, no image assets).
+
+A complete, tuned reference implementation is included below. It already encodes the research this design rests on — komorebi names the *relationship* between light, leaves, and movement, so the layer must breathe; every dapple is a pinhole image of the sun, so light gaps are round; tree-shadow "gobos" are a stock-overlay trend, so this one is seeded and procedural, never a texture; and wind is three summed sines with amplitude growing toward the branch tips (GPU Gems 3, ch. 6). Sources are linked in the page's field notes.
+
+Do exactly this:
+
+1. **Publish the reference implementation below AS-IS** as an artifact (or, if you cannot publish artifacts, write it to one self-contained HTML file and tell me how to open it). Do not rewrite, restructure, "improve", or re-tune it — every amplitude, default, and layer order is deliberate. The file is already self-contained: inline CSS/JS, no external requests, light + dark page themes, reduced-motion support.
+
+2. **Then look at my repo.** If it has a design system (tokens, theme file, brand palette, type scale), offer me a second version re-skinned to it — changing ONLY the phone-mock colors, type, and copy, and the page-chrome color tokens at the top of the stylesheet. Never touch the shadow engine, its constants, the control ranges, or the tuned defaults.
+
+3. When I've played with the three doors (枝 branch / 隙 dapple / 葉 drift) and settled on values, help me port the winning door to my platform: the generator as a pure seeded module (unit-testable; seed it from the date so the same day always wears the same tree), the compositing (blur + multiply + presence) in my design-system layer.
+
+The reference implementation:
+
+```html
+<title>樹影 — Tree-Shadow Prototype</title>
+<style>
+  /* ============ tokens ============ */
+  :root{
+    --ground:#EAE4D6;
+    --panel:#F7F3EA;
+    --text:#2A2722;
+    --quiet:#8F8778;
+    --hairline:rgba(42,39,34,.16);
+    --hairline-soft:rgba(42,39,34,.09);
+    --accent:#B0684F;
+    --accent-soft:rgba(176,104,79,.14);
+    --serif:'Iowan Old Style','Palatino Nova',Palatino,'Songti TC','Noto Serif TC',Georgia,serif;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --ground:#171814;
+      --panel:#1F211A;
+      --text:#E7E2D4;
+      --quiet:#948C7C;
+      --hairline:rgba(255,255,255,.14);
+      --hairline-soft:rgba(255,255,255,.08);
+      --accent:#C77E60;
+      --accent-soft:rgba(199,126,96,.16);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#171814; --panel:#1F211A; --text:#E7E2D4; --quiet:#948C7C;
+    --hairline:rgba(255,255,255,.14); --hairline-soft:rgba(255,255,255,.08);
+    --accent:#C77E60; --accent-soft:rgba(199,126,96,.16);
+  }
+  :root[data-theme="light"]{
+    --ground:#EAE4D6; --panel:#F7F3EA; --text:#2A2722; --quiet:#8F8778;
+    --hairline:rgba(42,39,34,.16); --hairline-soft:rgba(42,39,34,.09);
+    --accent:#B0684F; --accent-soft:rgba(176,104,79,.14);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--ground); color:var(--text);
+    font-family:var(--serif); line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit; text-decoration:underline; text-decoration-color:var(--hairline); text-underline-offset:3px}
+  a:hover{color:var(--accent); text-decoration-color:var(--accent)}
+  :focus-visible{outline:2px solid var(--accent); outline-offset:3px; border-radius:3px}
+
+  .wrap{max-width:1120px; margin:0 auto; padding:0 24px}
+
+  .micro{
+    font-family:var(--sans); font-size:11px; font-weight:600;
+    letter-spacing:.18em; text-transform:uppercase; color:var(--quiet);
+  }
+
+  /* ============ header ============ */
+  header.page{padding:64px 0 40px}
+  header.page h1{
+    font-size:clamp(32px,4.5vw,46px); font-weight:500; margin:14px 0 12px;
+    letter-spacing:.01em; text-wrap:balance; line-height:1.18;
+  }
+  header.page h1 .hanzi{margin-right:.35em}
+  header.page .dek{max-width:58ch; color:var(--quiet); font-size:17px; margin:0}
+  header.page .dek em{font-style:normal; color:var(--text)}
+
+  /* ============ stage ============ */
+  .stage{
+    display:grid; grid-template-columns:minmax(0,1fr) 320px;
+    gap:56px; align-items:start; padding:32px 0 72px;
+    border-top:1px solid var(--hairline);
+  }
+  @media (max-width:920px){ .stage{grid-template-columns:1fr; gap:40px} }
+
+  .phone-well{display:flex; flex-direction:column; align-items:center; gap:20px}
+  .phone-caption{max-width:40ch; text-align:center; color:var(--quiet); font-size:13.5px; line-height:1.6}
+
+  /* --- the phone. Deliberately always light: a light-first app identity --- */
+  .phone{
+    width:min(372px,90vw); aspect-ratio:393/832;
+    background:#26241F; border-radius:56px; padding:10px;
+    box-shadow:0 24px 60px -24px rgba(0,0,0,.45), 0 2px 8px rgba(0,0,0,.18);
+    position:relative; flex:none;
+  }
+  .island{
+    position:absolute; top:24px; left:50%; transform:translateX(-50%);
+    width:88px; height:25px; border-radius:13px; background:#191813; z-index:60;
+  }
+  .screen{
+    position:relative; width:100%; height:100%;
+    background:#F7F3EA; border-radius:47px; overflow:hidden;
+    isolation:isolate;
+  }
+  .wash{position:absolute; inset:0; z-index:1; pointer-events:none; transition:background .7s ease}
+  canvas#shadow{
+    position:absolute; z-index:2; pointer-events:none;
+    mix-blend-mode:multiply;
+  }
+  .screen.wash-card canvas#shadow{z-index:6}
+  .mock{
+    position:absolute; inset:0; z-index:3;
+    display:flex; flex-direction:column; align-items:center;
+    padding:76px 30px 30px; text-align:center; color:#2A2722;
+  }
+  .mock .micro{color:#B3AC9D}
+  .mock-hero{font-size:38px; font-weight:500; margin:10px 0 4px; letter-spacing:.01em; line-height:1.1}
+  .mock-sub{font-size:15px; color:#A79E8D}
+  .mock-sub .term{color:#B0684F; margin-left:.4em; letter-spacing:.1em}
+  .stateline{font-size:15px; color:#A79E8D; margin:26px 0 0; transition:opacity .5s}
+
+
+  /* ============ control panel ============ */
+  .panel{
+    background:var(--panel); border:1px solid var(--hairline-soft);
+    border-radius:20px; padding:26px 24px 20px;
+    position:sticky; top:24px;
+  }
+  @media (max-width:920px){ .panel{position:static; max-width:520px; margin:0 auto; width:100%} }
+  .panel h2{font-size:13px; font-weight:600; font-family:var(--sans); letter-spacing:.18em;
+    text-transform:uppercase; color:var(--quiet); margin:0 0 4px}
+  .panel .group{padding:16px 0 14px; border-bottom:1px solid var(--hairline-soft)}
+  .panel .group:last-child{border-bottom:none; padding-bottom:4px}
+  .label-row{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:9px}
+  .label-row .name{font-size:14.5px}
+  .label-row .name .hz{color:var(--quiet); margin-left:.45em; font-size:13px}
+  .label-row output{font-family:var(--sans); font-size:12px; color:var(--quiet); font-variant-numeric:tabular-nums}
+
+  /* variant segments */
+  .segments{display:flex; gap:6px}
+  .seg{
+    flex:1; background:none; border:none; cursor:pointer; padding:10px 4px 8px;
+    border-radius:14px; color:var(--quiet); font-family:var(--serif);
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    transition:color .3s;
+  }
+  .seg .hz{font-size:21px; line-height:1}
+  .seg .en{font-family:var(--sans); font-size:10px; letter-spacing:.14em; text-transform:uppercase}
+  .seg[aria-pressed="true"]{
+    color:var(--text);
+    background:radial-gradient(closest-side, var(--accent-soft), transparent);
+  }
+
+  /* sliders */
+  input[type=range]{
+    -webkit-appearance:none; appearance:none; width:100%; height:22px;
+    background:transparent; margin:0; cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-runnable-track{height:2px; background:var(--hairline); border-radius:1px}
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:15px; height:15px; border-radius:50%;
+    background:var(--text); border:3px solid var(--panel);
+    box-shadow:0 0 0 1px var(--hairline); margin-top:-6.5px;
+  }
+  input[type=range]::-moz-range-track{height:2px; background:var(--hairline); border-radius:1px}
+  input[type=range]::-moz-range-thumb{
+    width:9px; height:9px; border-radius:50%; background:var(--text);
+    border:3px solid var(--panel); box-shadow:0 0 0 1px var(--hairline);
+  }
+
+  /* day swatches */
+  .swatches{display:flex; gap:12px; margin-top:2px}
+  .sw{
+    width:34px; height:34px; border-radius:50%; border:none; cursor:pointer; padding:0;
+    position:relative; flex:none;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.1);
+    transition:transform .25s;
+  }
+  .sw[aria-pressed="true"]{transform:scale(1.12); box-shadow:inset 0 0 0 1px rgba(0,0,0,.12), 0 0 0 5px var(--accent-soft)}
+  .sw .hz{position:absolute; inset:0; display:grid; place-items:center; font-size:12px; color:rgba(42,39,34,.55)}
+  .sw-note{font-size:12.5px; color:var(--quiet); margin:12px 0 0; line-height:1.5}
+
+  /* toggle + regrow */
+  .row-inline{display:flex; align-items:center; justify-content:space-between; gap:12px}
+  .toggle{position:relative; display:inline-block; width:36px; height:21px; flex:none}
+  .toggle input{position:absolute; opacity:0; width:100%; height:100%; margin:0; cursor:pointer}
+  .toggle .pill{
+    position:absolute; inset:0; border-radius:11px; background:var(--hairline);
+    transition:background .3s; pointer-events:none;
+  }
+  .toggle .pill::after{
+    content:""; position:absolute; top:3px; left:3px; width:15px; height:15px;
+    border-radius:50%; background:var(--panel); transition:transform .3s;
+    box-shadow:0 1px 2px rgba(0,0,0,.2);
+  }
+  .toggle input:checked + .pill{background:var(--accent)}
+  .toggle input:checked + .pill::after{transform:translateX(15px)}
+  .toggle input:focus-visible + .pill{outline:2px solid var(--accent); outline-offset:2px}
+
+  .regrow{
+    background:none; border:none; cursor:pointer; padding:4px 0;
+    font-family:var(--serif); font-size:14px; color:var(--quiet);
+  }
+  .regrow:hover{color:var(--accent)}
+  .regrow .hz{margin-left:.4em; font-size:13px}
+
+  /* ============ notes ============ */
+  .notes{padding:56px 0 40px; border-top:1px solid var(--hairline)}
+  .notes > .micro{margin-bottom:26px}
+  .notes-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:36px 44px}
+  .note h3{font-size:19px; font-weight:500; margin:0 0 8px; letter-spacing:.01em; text-wrap:balance}
+  .note h3 .hz{color:var(--quiet); font-weight:400; margin-left:.4em; font-size:16px}
+  .note p{font-size:14.5px; color:var(--quiet); margin:0 0 8px; line-height:1.65}
+  .note p strong{color:var(--text); font-weight:500}
+  .note .src{font-family:var(--sans); font-size:11.5px; letter-spacing:.02em}
+
+  footer.page{
+    padding:36px 0 72px; border-top:1px solid var(--hairline);
+    color:var(--quiet); font-size:14px;
+  }
+  footer.page p{max-width:70ch; margin:0}
+</style>
+
+<header class="page wrap">
+  <div class="micro">樹影 · a komorebi prototype</div>
+  <h1><span class="hanzi">樹影</span>light through a tree, landing on paper</h1>
+  <p class="dek">Three procedural doors for the Home screen's tree-shadow backdrop, tuned to the
+  moodboard's quietest reference — a branch so diffuse it barely resolves. The layer rides
+  <em>multiply</em> on the paper, it breathes with the wind, and it never reads as an image.</p>
+</header>
+
+<main class="wrap">
+  <section class="stage">
+    <div class="phone-well">
+      <div class="phone">
+        <div class="island"></div>
+        <div class="screen wash-card" id="screen">
+          <div class="wash" id="wash"></div>
+          <canvas id="shadow"></canvas>
+          <div class="mock">
+            <div class="micro">2026 · July</div>
+            <h2 class="mock-hero">12 July</h2>
+            <div class="mock-sub">Saturday</div>
+            <p class="stateline" id="stateline">Still quiet — waiting for color.</p>
+          </div>
+        </div>
+      </div>
+      <p class="phone-caption" id="caption">枝影 — a bare branch entering from the light's corner,
+      the way the reference tile falls across a white wall.</p>
+    </div>
+
+    <aside class="panel" aria-label="shadow controls">
+      <h2>The layer</h2>
+
+      <div class="group">
+        <div class="label-row"><span class="name">door<span class="hz">門</span></span></div>
+        <div class="segments" role="group" aria-label="shadow variant">
+          <button class="seg" data-variant="branch" aria-pressed="true">
+            <span class="hz">枝</span><span class="en">branch</span>
+          </button>
+          <button class="seg" data-variant="dapple" aria-pressed="false">
+            <span class="hz">隙</span><span class="en">dapple</span>
+          </button>
+          <button class="seg" data-variant="drift" aria-pressed="false">
+            <span class="hz">葉</span><span class="en">drift</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="label-row">
+          <span class="name">presence<span class="hz">濃</span></span>
+          <output id="presenceOut">14%</output>
+        </div>
+        <input type="range" id="presence" min="4" max="32" value="14" aria-label="shadow presence">
+        <div class="label-row" style="margin-top:14px">
+          <span class="name">softness<span class="hz">柔</span></span>
+          <output id="blurOut">16 px</output>
+        </div>
+        <input type="range" id="blur" min="2" max="36" value="16" aria-label="shadow softness">
+        <div class="label-row" style="margin-top:14px">
+          <span class="name">reach<span class="hz">幅</span></span>
+          <output id="scaleOut">1.0×</output>
+        </div>
+        <input type="range" id="scale" min="60" max="170" value="100" aria-label="shadow scale">
+      </div>
+
+      <div class="group">
+        <div class="label-row">
+          <span class="name">wind<span class="hz">風</span></span>
+          <output id="windOut">breath</output>
+        </div>
+        <input type="range" id="wind" min="0" max="200" value="70" aria-label="wind strength">
+      </div>
+
+      <div class="group">
+        <div class="label-row"><span class="name">the day<span class="hz">日色</span></span></div>
+        <div class="swatches" role="group" aria-label="day color">
+          <button class="sw" data-tint="empty" aria-pressed="true"  style="background:#E9E5DC" aria-label="empty day"><span class="hz">空</span></button>
+          <button class="sw" data-tint="gold"  aria-pressed="false" style="background:linear-gradient(135deg,#D9C08B,#E9D9B0)" aria-label="gold day"></button>
+          <button class="sw" data-tint="sage"  aria-pressed="false" style="background:linear-gradient(135deg,#8E9B84,#B1BCAF)" aria-label="sage day"></button>
+          <button class="sw" data-tint="dusk"  aria-pressed="false" style="background:linear-gradient(135deg,#C2A4A6,#D7BFC0)" aria-label="dusk day"></button>
+        </div>
+        <p class="sw-note">空 is the empty day — the shadow is all the surface has. A fed day
+        tints the shadow toward its own color, so the layer rides <em>inside</em> the atmosphere
+        rather than competing with it.</p>
+      </div>
+
+      <div class="group">
+        <div class="row-inline">
+          <span class="name" style="font-size:14.5px">shadow falls on the content too</span>
+          <label class="toggle">
+            <input type="checkbox" id="washCard" checked>
+            <span class="pill"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="group">
+        <button class="regrow" id="regrow">another tree<span class="hz">再生</span></button>
+      </div>
+    </aside>
+  </section>
+
+  <section class="notes">
+    <div class="micro">Field notes — what the research says</div>
+    <div class="notes-grid">
+      <article class="note">
+        <h3>The phenomenon has a name<span class="hz">木漏れ日</span></h3>
+        <p><strong>Komorebi</strong> names not the light itself but the relationship — leaves,
+        light, and the movement between them. The implication: a static shadow texture is
+        not the thing. The layer must breathe, or it's just a stain. A rule worth keeping: waiting things breathe, never freeze.</p>
+        <p class="src"><a href="https://wabisabi-jp.com/blogs/wabi-sabi-journal/komorebi">wabisabi-jp</a> ·
+        <a href="https://thursd.com/articles/komorebi-dance-of-sunlight-in-nature">thursd</a></p>
+      </article>
+
+      <article class="note">
+        <h3>Every dapple is a picture of the sun</h3>
+        <p>Each gap in a canopy is a <strong>pinhole camera</strong> projecting the sun's disk —
+        that's why dapples are round, and why they turn crescent during an eclipse. Softness grows
+        with canopy height. So the 隙 door punches <strong>round light spots out of shadow</strong>
+        rather than thresholding noise; it's physically honest and it reads instantly.</p>
+        <p class="src"><a href="https://eclipse.aas.org/eye-safety/projection">AAS eclipse projection</a> ·
+        <a href="https://petapixel.com/2012/05/21/crescent-shaped-projections-through-tree-leaves-during-the-solar-eclipse/">PetaPixel</a> ·
+        <a href="https://www.edwardtufte.com/notebook/dappled-light/">Tufte, “Dappled light”</a></p>
+      </article>
+
+      <article class="note">
+        <h3>The stage word is gobo</h3>
+        <p>Lighting designers shape light with a <strong>gobo</strong> — and tree-shadow gobos are
+        currently everywhere as background textures (Figma sets, overlay loops). That's the risk:
+        a baked overlay reads as stock. the shadow must be <strong>procedural and of the day</strong> —
+        seeded, tinted by the day's own palette, never a PNG.</p>
+        <p class="src"><a href="https://www.figma.com/community/file/1360553650737919328/20-background-shadow-textures-light-mode-dark-mode-gobo-shadows">Figma gobo set</a> ·
+        <a href="https://www.schoolofmotion.com/blog/designing-shadows">School of Motion</a></p>
+      </article>
+
+      <article class="note">
+        <h3>Wind is a sum of slow sines</h3>
+        <p>The standard trick (GPU Gems): layer <strong>sines of different frequencies</strong>,
+        let amplitude grow toward branch tips, add a whisper of high-frequency flutter for the
+        leaves. This prototype does exactly that per branch segment — cheap enough for a
+        60fps backdrop, and directly portable to SwiftUI's <code>Canvas</code> or a Metal shader.</p>
+        <p class="src"><a href="https://developer.nvidia.com/gpugems/gpugems3/part-i-geometry/chapter-6-gpu-generated-procedural-wind-animations-trees">GPU Gems 3, ch. 6</a> ·
+        <a href="https://codepen.io/DienoX/pen/DEegxZ">procedural tree pen</a></p>
+      </article>
+
+      <article class="note">
+        <h3>Where it lives in the code</h3>
+        <p>Shadow <strong>generation math → a pure, seeded, unit-testable module</strong>
+        (like color extraction), <strong>tint &amp; compositing → the design-system layer</strong> —
+        never inline in feature views. Seed it from the date (e.g. month×31+day) so the same
+        day always wears the same tree.</p>
+      </article>
+
+      <article class="note">
+        <h3>What the controls probe</h3>
+        <p>The open questions, made draggable: <strong>日色</strong> probes whether the shadow
+        competes with the app's own day-color atmosphere or rides inside it; <strong>空</strong> is the
+        empty-day answer (procedural, always available); the <strong>content toggle</strong> asks
+        whether light falls on the whole wall or only behind the text.</p>
+      </article>
+    </div>
+  </section>
+</main>
+
+<footer class="page wrap">
+  <p>Prototype only — three doors, one paper. Next step: pick a door, then port the winner as a
+  seeded generator behind a native canvas compositor (SwiftUI <code>Canvas</code>, Jetpack Compose,
+  or plain layers). The extraction door — lifting leaf silhouettes from the user's own photos —
+  stays open as a second source feeding the same compositor.</p>
+</footer>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ---------- state ---------- */
+  const state = {
+    variant:'branch',
+    presence:0.14,
+    blur:16,
+    scale:1.0,
+    wind:0.7,
+    tint:'empty',
+    seed:20260712
+  };
+  let dirty = true;
+
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* Day palettes: the shadow ink each day casts */
+  const DAYS = {
+    empty:{ shadow:'#4d473f', wash:null, state:'Still quiet — waiting for color.' },
+    gold: { shadow:'#6e5f43', wash:'233,217,176', state:'Gathering — color is taking shape.' },
+    sage: { shadow:'#4f5b4d', wash:'177,188,175', state:'Gathering — color is taking shape.' },
+    dusk: { shadow:'#5f4d51', wash:'215,191,192', state:'Gathering — color is taking shape.' }
+  };
+
+  /* ---------- seeded rng ---------- */
+  function mulberry32(a){
+    return function(){
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      let t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  /* ---------- canvas setup ---------- */
+  const screen = document.getElementById('screen');
+  const canvas = document.getElementById('shadow');
+  const ctx = canvas.getContext('2d');
+  const M = 48;                 // draw margin beyond the screen, so blur never vignettes
+  let W = 0, H = 0, dpr = 1;
+
+  function resize(){
+    const r = screen.getBoundingClientRect();
+    W = r.width + M*2; H = r.height + M*2;
+    dpr = Math.min(devicePixelRatio || 1, 2);
+    canvas.width = Math.round(W*dpr); canvas.height = Math.round(H*dpr);
+    canvas.style.width = W+'px'; canvas.style.height = H+'px';
+    canvas.style.left = (-M)+'px'; canvas.style.top = (-M)+'px';
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    rebuild(); dirty = true;
+  }
+  new ResizeObserver(resize).observe(screen);
+
+  /* ---------- door 1: 枝 branch ---------- */
+  let trees = [];
+  function makeBranch(rng, depth, len, width, maxDepth){
+    const node = {
+      angle:(rng()-0.5)*0.5, len, width,
+      bow:(rng()-0.5)*len*0.5, phase:rng()*Math.PI*2,
+      f:0.45+rng()*0.5, children:[], leaves:[]
+    };
+    if(depth < maxDepth){
+      const n = depth < 2 ? (rng()<0.6?3:2) : (rng()<0.75?2:1);
+      for(let i=0;i<n;i++){
+        const c = makeBranch(rng, depth+1, len*(0.58+rng()*0.24), width*0.62, maxDepth);
+        c.angle = (rng()-0.5)*1.15;
+        node.children.push(c);
+      }
+    }
+    if(depth >= 2){
+      const count = depth >= 3 ? 2+Math.floor(rng()*4) : (rng()<0.3?1:0);
+      for(let i=0;i<count;i++){
+        node.leaves.push({
+          f:0.3+rng()*0.7, l:14+rng()*13, w:4.5+rng()*3.5,
+          ang:(rng()-0.5)*1.7, phase:rng()*Math.PI*2,
+          side:rng()<0.5?-1:1, off:2+rng()*7
+        });
+      }
+    }
+    return node;
+  }
+  function buildTrees(rng){
+    trees = [
+      { x:W*0.94, y:-14, base:2.35, alpha:1,
+        root:makeBranch(rng, 0, H*0.30, 6.5, 5) },
+      { x:-24, y:H*0.74, base:-0.42, alpha:0.5,
+        root:makeBranch(rng, 0, H*0.17, 4.5, 4) }
+    ];
+  }
+  function sway(phase, depth, t, wind){
+    const d = 0.35 + depth*0.55;
+    return wind * d * (
+      0.016*Math.sin(t*0.55+phase) +
+      0.009*Math.sin(t*1.5+phase*2.1) +
+      0.005*Math.sin(t*3.7+phase*0.6)
+    );
+  }
+  function drawBranch(node, x, y, angle, depth, t, s, wind){
+    const a = angle + node.angle + sway(node.phase, depth, t, wind);
+    const len = node.len*s;
+    const x2 = x + Math.cos(a)*len, y2 = y + Math.sin(a)*len;
+    const mx = (x+x2)/2 + Math.cos(a+Math.PI/2)*node.bow*s;
+    const my = (y+y2)/2 + Math.sin(a+Math.PI/2)*node.bow*s;
+    ctx.lineWidth = Math.max(node.width*s, 0.8);
+    ctx.beginPath(); ctx.moveTo(x,y); ctx.quadraticCurveTo(mx,my,x2,y2); ctx.stroke();
+
+    for(const lf of node.leaves){
+      const lx = x + Math.cos(a)*len*lf.f + Math.cos(a+Math.PI/2)*lf.side*lf.off*s;
+      const ly = y + Math.sin(a)*len*lf.f + Math.sin(a+Math.PI/2)*lf.side*lf.off*s;
+      const flutter = Math.sin(t*2.2+lf.phase)*0.07*wind*(1+depth*0.15);
+      ctx.beginPath();
+      ctx.ellipse(lx, ly, lf.l*s, lf.w*s, a+lf.ang+flutter, 0, Math.PI*2);
+      ctx.fill();
+    }
+    for(const c of node.children){
+      const cx = x + Math.cos(a)*len*c.f, cy = y + Math.sin(a)*len*c.f;
+      drawBranch(c, cx, cy, a, depth+1, t, s, wind);
+    }
+  }
+  function drawBranchDoor(t){
+    ctx.lineCap = 'round';
+    for(const tr of trees){
+      ctx.globalAlpha = tr.alpha;
+      drawBranch(tr.root, tr.x, tr.y, tr.base, 0, t, state.scale, state.wind);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /* ---------- door 2: 隙 dapple (pinhole suns punched from shadow) ---------- */
+  let gaps = [];
+  function buildGaps(rng){
+    gaps = [];
+    const clusters = [];
+    for(let i=0;i<5;i++) clusters.push({x:rng()*W, y:rng()*H});
+    for(let i=0;i<95;i++){
+      const c = clusters[Math.floor(rng()*clusters.length)];
+      const spread = 90 + rng()*120;
+      gaps.push({
+        x:c.x + (rng()+rng()-1)*spread, y:c.y + (rng()+rng()-1)*spread,
+        r:7 + rng()*26, amp:5 + rng()*14,
+        p1:rng()*Math.PI*2, p2:rng()*Math.PI*2, p3:rng()*Math.PI*2
+      });
+    }
+    for(let i=0;i<3;i++){
+      gaps.push({ x:rng()*W, y:rng()*H, r:60+rng()*60, amp:8+rng()*10,
+        p1:rng()*Math.PI*2, p2:rng()*Math.PI*2, p3:rng()*Math.PI*2 });
+    }
+  }
+  function drawDappleDoor(t){
+    ctx.fillRect(0,0,W,H);
+    ctx.globalCompositeOperation = 'destination-out';
+    const wind = state.wind, s = state.scale;
+    for(const g of gaps){
+      const x = g.x + Math.sin(t*0.18*wind + g.p1)*g.amp;
+      const y = g.y + Math.cos(t*0.13*wind + g.p2)*g.amp*0.6;
+      const r = g.r*s * (1 + 0.12*Math.sin(t*0.5*wind + g.p3));
+      const grad = ctx.createRadialGradient(x,y,0,x,y,r);
+      grad.addColorStop(0,'rgba(0,0,0,0.95)');
+      grad.addColorStop(0.7,'rgba(0,0,0,0.5)');
+      grad.addColorStop(1,'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  /* ---------- door 3: 葉 drift (sparse leaf clusters) ---------- */
+  let clumps = [];
+  function buildClumps(rng){
+    clumps = [];
+    for(let i=0;i<9;i++){
+      const leaves = [];
+      const n = 4 + Math.floor(rng()*5);
+      for(let j=0;j<n;j++){
+        leaves.push({
+          dx:(rng()-0.5)*110, dy:(rng()-0.5)*90,
+          l:22+rng()*26, w:8+rng()*8, ang:rng()*Math.PI
+        });
+      }
+      clumps.push({
+        cx:rng()*W, cy:rng()*H, leaves,
+        amp:10+rng()*18, p1:rng()*Math.PI*2, p2:rng()*Math.PI*2,
+        alpha:0.5+rng()*0.5
+      });
+    }
+  }
+  function drawDriftDoor(t){
+    const wind = state.wind, s = state.scale;
+    for(const c of clumps){
+      const ox = Math.sin(t*0.15*wind + c.p1)*c.amp;
+      const oy = Math.cos(t*0.10*wind + c.p1*1.3)*c.amp*0.5;
+      const rot = Math.sin(t*0.11*wind + c.p2)*0.09;
+      ctx.save();
+      ctx.translate(c.cx+ox, c.cy+oy); ctx.rotate(rot); ctx.scale(s,s);
+      ctx.globalAlpha = c.alpha;
+      for(const lf of c.leaves){
+        ctx.beginPath();
+        ctx.ellipse(lf.dx, lf.dy, lf.l, lf.w, lf.ang, 0, Math.PI*2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /* ---------- rebuild + frame ---------- */
+  function rebuild(){
+    buildTrees(mulberry32(state.seed));
+    buildGaps(mulberry32(state.seed ^ 0x9e3779b9));
+    buildClumps(mulberry32(state.seed ^ 0x5bd1e995));
+  }
+
+  function frame(t){
+    ctx.clearRect(0,0,W,H);
+    const ink = DAYS[state.tint].shadow;
+    ctx.fillStyle = ink; ctx.strokeStyle = ink;
+    if(state.variant === 'branch') drawBranchDoor(t);
+    else if(state.variant === 'dapple') drawDappleDoor(t);
+    else drawDriftDoor(t);
+  }
+
+  const t0 = performance.now();
+  function loop(now){
+    const t = reducedMotion ? 0 : (now - t0)/1000;
+    if(!reducedMotion && state.wind > 0){ frame(t); dirty = false; }
+    else if(dirty){ frame(t); dirty = false; }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  /* ---------- style bindings ---------- */
+  function applyLayerStyle(){
+    canvas.style.opacity = state.presence;
+    canvas.style.filter = 'blur(' + state.blur + 'px)';
+  }
+
+  const CAPTIONS = {
+    branch:'枝影 — a bare branch entering from the light’s corner, the way the reference tile falls across a white wall.',
+    dapple:'葉隙 — komorebi: every bright spot is a pinhole image of the sun, drifting as the canopy shifts.',
+    drift:'疏影 — sparse leaf clusters adrift on the paper, the loosest and quietest of the three.'
+  };
+
+  function applyDay(){
+    const day = DAYS[state.tint];
+    document.getElementById('stateline').textContent = day.state;
+    const wash = document.getElementById('wash');
+    wash.style.background = day.wash
+      ? 'radial-gradient(120% 70% at 82% 6%, rgba(' + day.wash + ',0.28), transparent 62%)'
+      : 'none';
+    dirty = true;
+  }
+
+  /* ---------- controls ---------- */
+  document.querySelectorAll('.seg').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.seg').forEach(function(b){ b.setAttribute('aria-pressed','false'); });
+      btn.setAttribute('aria-pressed','true');
+      state.variant = btn.dataset.variant;
+      document.getElementById('caption').textContent = CAPTIONS[state.variant];
+      dirty = true;
+    });
+  });
+
+  document.querySelectorAll('.sw').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.sw').forEach(function(b){ b.setAttribute('aria-pressed','false'); });
+      btn.setAttribute('aria-pressed','true');
+      state.tint = btn.dataset.tint;
+      applyDay();
+    });
+  });
+
+  function bindRange(id, fn){
+    const el = document.getElementById(id);
+    el.addEventListener('input', function(){ fn(parseFloat(el.value)); dirty = true; });
+  }
+  bindRange('presence', function(v){
+    state.presence = v/100; applyLayerStyle();
+    document.getElementById('presenceOut').textContent = Math.round(v) + '%';
+  });
+  bindRange('blur', function(v){
+    state.blur = v; applyLayerStyle();
+    document.getElementById('blurOut').textContent = Math.round(v) + ' px';
+  });
+  bindRange('scale', function(v){
+    state.scale = v/100;
+    document.getElementById('scaleOut').textContent = (v/100).toFixed(1) + '×';
+  });
+  bindRange('wind', function(v){
+    state.wind = v/100;
+    const w = v/100;
+    document.getElementById('windOut').textContent =
+      w === 0 ? 'still' : w < 0.5 ? 'breath' : w < 1.2 ? 'breeze' : 'wind';
+  });
+
+  document.getElementById('washCard').addEventListener('change', function(e){
+    screen.classList.toggle('wash-card', e.target.checked);
+  });
+
+  document.getElementById('regrow').addEventListener('click', function(){
+    state.seed = (state.seed * 48271) % 2147483647;
+    rebuild(); dirty = true;
+  });
+
+  /* ---------- init ---------- */
+  applyLayerStyle();
+  applyDay();
+  resize();
+})();
+</script>
+
+```
