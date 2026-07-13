@@ -53,8 +53,9 @@ viewport widths ≥ ~1220px. Below that:
 Removed: the "another tree" group and the whole "take it home" group (label
 row, both text buttons, visible take-note). Kept for correctness:
 
-- `#copyFallback` textarea stays in the panel as its own hidden last group
-  (shown only on clipboard failure, exactly as today).
+- `#copyFallback` textarea stays at the end of the panel, outside any
+  `.group` wrapper (a group with only hidden content would render an empty
+  bordered strip); shown only on clipboard failure, exactly as today.
 - The take-note text moves to a permanently screen-reader-only paragraph
   (`id="takeNote"`, sr-only pattern already used by the viewport-fit tiers)
   so `#copyPrompt`'s `aria-describedby="takeNote"` keeps resolving.
