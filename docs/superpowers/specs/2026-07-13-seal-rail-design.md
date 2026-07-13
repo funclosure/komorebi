@@ -17,7 +17,10 @@ rounded-rect buttons floating just right of the panel.
 A vertical column of three rounded-rect "seal" buttons, anchored to the
 sticky panel: a `.rail` container inside `<aside class="panel">`, positioned
 `position:absolute; left:calc(100% + 14px); top:0` so it rides with the
-panel's sticky behavior. Buttons stack with a 10px gap.
+panel's sticky behavior. Buttons stack with a 10px gap beneath a small visible micro-caption
+("take it home 土産", `.rail-cap`, aria-hidden since the group's
+`aria-label` announces the same words) — added after final review found
+icon+hanzi alone left the core CTA with no visible English anywhere.
 
 Each seal (~52×52px, `border-radius:14px`, 1px `var(--hairline-soft)`
 border, `var(--panel)` background):
@@ -42,11 +45,13 @@ come free via the existing tokens.
 The floating rail needs free space right of the panel, which exists only at
 viewport widths ≥ ~1220px. Below that:
 
-- `@media (max-width:1219px)`: the `.rail` becomes a static horizontal row
+- `@media (max-width:1239px)`: the `.rail` becomes a static horizontal row
   (three seals, same markup) rendered as the panel's last group —
   `position:static; flex-direction:row` with a top hairline border, matching
   the panel's group rhythm. This covers both the narrow two-column band
-  (921–1219px) and the single-column/mobile layout.
+  (921–1239px; at 1220–1239px the floating rail cleared the viewport by
+  under 10px once a scrollbar is present) and the single-column/mobile
+  layout.
 
 ### What leaves the panel / what stays
 
