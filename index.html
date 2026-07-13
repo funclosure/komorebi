@@ -231,7 +231,6 @@
   @media (min-width:921px) and (max-height:1360px){
     header.page{padding:28px 0 20px}
     header.page h1{margin:8px 0}
-    header.page .dek{margin:0}
     .stage{padding-top:20px}
     .panel{padding:16px 20px 12px}
     .panel h2{margin-bottom:2px}
@@ -241,9 +240,10 @@
     .seg{padding:7px 4px 4px}
   }
   @media (min-width:921px) and (max-height:1080px){
-    header.page .dek{display:none}
-    .sw-note{display:none}
-    .take-note{display:none}
+    header.page .dek, .sw-note, .take-note{
+      position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+      overflow:hidden; clip-path:inset(50%); white-space:nowrap;
+    }
     .sw{width:30px; height:30px}
     .stage{padding-top:14px}
     .panel{padding:12px 18px 8px}
@@ -353,9 +353,9 @@
 
       <div class="group">
         <div class="label-row"><span class="name">take it home<span class="hz">土産</span></span></div>
-        <button class="take" id="copyPrompt">copy the prompt<span class="hz">持ち帰り</span></button>
+        <button class="take" id="copyPrompt" aria-describedby="takeNote">copy the prompt<span class="hz">持ち帰り</span></button>
         <button class="take" id="copyLink">copy this light<span class="hz">光を共有</span></button>
-        <p class="take-note">The prompt carries your tuned values and the engine itself —
+        <p class="take-note" id="takeNote">The prompt carries your tuned values and the engine itself —
         paste it into Claude Code inside your own repo and the light follows you home.</p>
         <textarea id="copyFallback" class="copy-fallback" hidden readonly
           aria-label="copy manually — automatic copy failed"></textarea>
