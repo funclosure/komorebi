@@ -325,27 +325,27 @@
       <div class="group">
         <div class="label-row">
           <span class="name">presence<span class="hz">濃</span></span>
-          <output id="presenceOut">14%</output>
+          <output id="presenceOut">20%</output>
         </div>
-        <input type="range" id="presence" min="4" max="32" value="14" aria-label="shadow presence">
+        <input type="range" id="presence" min="4" max="32" value="20" aria-label="shadow presence">
         <div class="label-row stack">
           <span class="name">softness<span class="hz">柔</span></span>
-          <output id="blurOut">16 px</output>
+          <output id="blurOut">6 px</output>
         </div>
-        <input type="range" id="blur" min="2" max="36" value="16" aria-label="shadow softness">
+        <input type="range" id="blur" min="2" max="36" value="6" aria-label="shadow softness">
         <div class="label-row stack">
           <span class="name">reach<span class="hz">幅</span></span>
-          <output id="scaleOut">1.0×</output>
+          <output id="scaleOut">0.9×</output>
         </div>
-        <input type="range" id="scale" min="60" max="170" value="100" aria-label="shadow scale">
+        <input type="range" id="scale" min="60" max="170" value="92" aria-label="shadow scale">
       </div>
 
       <div class="group">
         <div class="label-row">
           <span class="name">wind<span class="hz">風</span></span>
-          <output id="windOut">breath</output>
+          <output id="windOut">wind</output>
         </div>
-        <input type="range" id="wind" min="0" max="200" value="70" aria-label="wind strength">
+        <input type="range" id="wind" min="0" max="200" value="138" aria-label="wind strength">
       </div>
 
       <div class="group">
@@ -475,10 +475,10 @@
   /* ---------- state ---------- */
   const state = {
     variant:'branch',
-    presence:0.14,
-    blur:16,
-    scale:1.0,
-    wind:0.7,
+    presence:0.20,
+    blur:6,
+    scale:0.92,
+    wind:1.38,
     tint:'empty',
     seed:20260712
   };
