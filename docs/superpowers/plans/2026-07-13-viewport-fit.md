@@ -67,7 +67,6 @@ At the end of the `<style>` block, immediately before `</style>`, add:
   @media (min-width:921px) and (max-height:1360px){
     header.page{padding:28px 0 20px}
     header.page h1{margin:8px 0}
-    header.page .dek{margin:0}
     .stage{padding-top:20px}
     .panel{padding:16px 20px 12px}
     .panel h2{margin-bottom:2px}
@@ -77,9 +76,10 @@ At the end of the `<style>` block, immediately before `</style>`, add:
     .seg{padding:7px 4px 4px}
   }
   @media (min-width:921px) and (max-height:1080px){
-    header.page .dek{display:none}
-    .sw-note{display:none}
-    .take-note{display:none}
+    header.page .dek, .sw-note, .take-note{
+      position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+      overflow:hidden; clip-path:inset(50%); white-space:nowrap;
+    }
     .sw{width:30px; height:30px}
     .stage{padding-top:14px}
     .panel{padding:12px 18px 8px}

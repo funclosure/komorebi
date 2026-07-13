@@ -41,7 +41,9 @@ tall then fit everything):
 
 The laptop class; additionally:
 
-- Hide the explanatory copy: `.dek`, `.sw-note`, `.take-note` (`display:none`)
+- Visually hide the explanatory copy (`.dek`, `.sw-note`, `.take-note`) with a
+  zero-footprint sr-only pattern (absolute 1×1, clip-path) so it stays in the
+  accessibility tree; `#copyPrompt` carries `aria-describedby="takeNote"`
 - Swatches `.sw` 34px → 30px
 - `.stage` padding-top → 14; `.panel` padding → 12/18/8; `.panel .group`
   padding → 7/5 (deep enough that ~820px-tall viewports also fit)
