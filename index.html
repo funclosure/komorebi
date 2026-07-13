@@ -194,6 +194,20 @@
   .regrow:hover{color:var(--accent)}
   .regrow .hz{margin-left:.4em; font-size:13px}
 
+  .take{
+    background:none; border:none; cursor:pointer; padding:4px 0; display:block;
+    font-family:var(--serif); font-size:14px; color:var(--quiet); text-align:left;
+  }
+  .take:hover{color:var(--accent)}
+  .take .hz{margin-left:.4em; font-size:13px}
+  .take.done{color:var(--accent)}
+  .take-note{font-size:12.5px; color:var(--quiet); margin:8px 0 0; line-height:1.5}
+  .copy-fallback{
+    width:100%; margin-top:10px; height:120px; resize:vertical;
+    font-family:var(--sans); font-size:11px; color:var(--quiet);
+    background:none; border:1px solid var(--hairline-soft); border-radius:8px; padding:8px;
+  }
+
   /* ============ notes ============ */
   .notes{padding:56px 0 40px; border-top:1px solid var(--hairline)}
   .notes > .micro{margin-bottom:26px}
@@ -309,6 +323,16 @@
       <div class="group">
         <button class="regrow" id="regrow">another tree<span class="hz">再生</span></button>
       </div>
+
+      <div class="group">
+        <div class="label-row"><span class="name">take it home<span class="hz">土産</span></span></div>
+        <button class="take" id="copyPrompt">copy the prompt<span class="hz">持ち帰り</span></button>
+        <button class="take" id="copyLink">copy this light<span class="hz">光を共有</span></button>
+        <p class="take-note">The prompt carries your tuned values and the engine itself —
+        paste it into Claude Code inside your own repo and the light follows you home.</p>
+        <textarea id="copyFallback" class="copy-fallback" hidden readonly
+          aria-label="copy manually — automatic copy failed"></textarea>
+      </div>
     </aside>
   </section>
 
@@ -379,6 +403,9 @@
   seeded generator behind a native canvas compositor (SwiftUI <code>Canvas</code>, Jetpack Compose,
   or plain layers). The extraction door — lifting leaf silhouettes from the user's own photos —
   stays open as a second source feeding the same compositor.</p>
+  <p style="margin-top:12px">Open source at
+  <a href="https://github.com/funclosure/komorebi">github.com/funclosure/komorebi</a> ·
+  born from <a href="https://gist.github.com/funclosure/ed79bf5abfcf0d3ba1f6561615469c6b">the original gist</a>.</p>
 </footer>
 
 <script id="engine">
@@ -766,6 +793,93 @@
   document.querySelectorAll('.seg, .sw').forEach(function(b){ b.addEventListener('click', writeHash); });
   document.getElementById('regrow').addEventListener('click', writeHash);
 
-  window.__playground = { currentState: currentState, stateToHash: stateToHash, applyHash: applyHash };
+  /* ---------- take it home ---------- */
+  const DOOR_NOTES = {
+    branch:'枝 branch — a bare branch entering from the light\'s corner',
+    dapple:'隙 dapple — round light-gaps punched from shadow; every dapple is a pinhole image of the sun',
+    drift:'葉 drift — sparse leaf clusters adrift on the surface'
+  };
+  const DAY_INKS = { empty:'#4d473f', gold:'#6e5f43', sage:'#4f5b4d', dusk:'#5f4d51' };
+
+  function shareURL(s){
+    const base = location.origin.indexOf('http') === 0
+      ? location.href.split('#')[0]
+      : 'https://funclosure.github.io/komorebi/';
+    return base + stateToHash(s);
+  }
+
+  function buildPrompt(s){
+    const engine = document.getElementById('engine').textContent.trim();
+    return [
+      'Add a komorebi (木漏れ日) tree-shadow backdrop to this project — dappled leaf-shadow falling across the UI the way light through a tree lands on a wall.',
+      '',
+      'I tuned the effect in the komorebi playground; these exact values are the required defaults:',
+      '',
+      '- door: ' + DOOR_NOTES[s.door],
+      '- presence: ' + s.presence + '% (layer opacity)',
+      '- softness: ' + s.blur + 'px (blur — the penumbra)',
+      '- reach: ' + (s.reach/100).toFixed(1) + '× (scale)',
+      '- wind: ' + (s.wind/100).toFixed(2) + ' (0 = still)',
+      '- day tint: ' + s.day + ' (shadow ink ' + DAY_INKS[s.day] + ')',
+      '- shadow falls on the content too: ' + (s.card ? 'yes' : 'no — behind content only'),
+      '- seed: ' + s.seed,
+      '- this exact state, live: ' + shareURL(s),
+      '',
+      'How to apply it (rules from the reference — not negotiable):',
+      '1. Detect my platform and design system from this repo (plain web, React, SwiftUI, Compose, …) and implement natively — sharp vector shapes on a 2D canvas; no WebGL, no image assets.',
+      '2. Port the generator as a pure seeded module (unit-testable). Keep my seed as its default; consider seeding from the date (e.g. month×31+day) so the same day always wears the same tree.',
+      '3. Compositing belongs in the design-system layer, never inline in feature views: blur is the penumbra, a multiply blend so the layer can only darken (shadow, not gray paint), opacity is the presence.',
+      '4. Overdraw ~48px past the visible edge and clip it away, so the blur never vignettes.',
+      '5. Respect prefers-reduced-motion: freeze to a still frame.',
+      '',
+      'The acceptance bar — "barely there": the layer must never read as an image pasted behind the app, and the motion must read as breathing, never flapping. If a first-time viewer can tell HOW it is made, it is too loud; if they just feel late-afternoon light in the room, it is right.',
+      '',
+      'Reference engine — exactly the code I was watching in the playground. Implement ONLY the "' + s.door + '" door; the other two are context, drop them. The window.__komorebi hook at the bottom is playground plumbing — omit it.',
+      '',
+      '```js',
+      engine,
+      '```',
+      ''
+    ].join('\n');
+  }
+
+  function legacyCopy(text, done){
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch(e){}
+    ta.remove(); done(ok);
+  }
+  function copyText(text, btn){
+    const done = function(ok){ flash(btn, ok, text); };
+    if (navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){ done(true); }, function(){ legacyCopy(text, done); });
+    } else legacyCopy(text, done);
+  }
+  function flash(btn, ok, text){
+    if (!ok){
+      const fb = document.getElementById('copyFallback');
+      fb.hidden = false; fb.value = text; fb.focus(); fb.select();
+      return;
+    }
+    if (btn.dataset.orig === undefined) btn.dataset.orig = btn.innerHTML;
+    btn.innerHTML = 'copied ✓'; btn.classList.add('done');
+    clearTimeout(btn._t);
+    btn._t = setTimeout(function(){
+      btn.innerHTML = btn.dataset.orig; btn.classList.remove('done');
+    }, 1500);
+  }
+
+  document.getElementById('copyPrompt').addEventListener('click', function(){
+    window.__lastCopied = buildPrompt(currentState());
+    copyText(window.__lastCopied, this);
+  });
+  document.getElementById('copyLink').addEventListener('click', function(){
+    window.__lastCopied = shareURL(currentState());
+    copyText(window.__lastCopied, this);
+  });
+
+  window.__playground = { currentState: currentState, stateToHash: stateToHash, applyHash: applyHash, buildPrompt: buildPrompt, shareURL: shareURL };
 })();
 </script>
