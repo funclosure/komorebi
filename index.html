@@ -1,5 +1,7 @@
 <!doctype html>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍃</text></svg>">
 <title>樹影 — Tree-Shadow Prototype</title>
 <style>
   /* ============ tokens ============ */
@@ -756,8 +758,14 @@
     return '#' + p.toString();
   }
 
+  let hashTimer = null;
   function writeHash(){
-    history.replaceState(null, '', location.href.split('#')[0] + stateToHash(currentState()));
+    clearTimeout(hashTimer);
+    hashTimer = setTimeout(function(){
+      try {
+        history.replaceState(null, '', location.href.split(/[?#]/)[0] + stateToHash(currentState()));
+      } catch(e){ /* Safari rate-limits replaceState; drop this write, the next one wins */ }
+    }, 200);
   }
 
   function applyHash(){
@@ -795,15 +803,16 @@
 
   /* ---------- take it home ---------- */
   const DOOR_NOTES = {
-    branch:'枝 branch — a bare branch entering from the light\'s corner',
+    branch:'枝 branch — a bare branch entering from the light’s corner',
     dapple:'隙 dapple — round light-gaps punched from shadow; every dapple is a pinhole image of the sun',
     drift:'葉 drift — sparse leaf clusters adrift on the surface'
   };
+  /* mirrors the engine's DAYS[*].shadow inks — keep in sync if the engine is ever retuned */
   const DAY_INKS = { empty:'#4d473f', gold:'#6e5f43', sage:'#4f5b4d', dusk:'#5f4d51' };
 
   function shareURL(s){
     const base = location.origin.indexOf('http') === 0
-      ? location.href.split('#')[0]
+      ? location.href.split(/[?#]/)[0]
       : 'https://funclosure.github.io/komorebi/';
     return base + stateToHash(s);
   }
@@ -818,7 +827,7 @@
       '- door: ' + DOOR_NOTES[s.door],
       '- presence: ' + s.presence + '% (layer opacity)',
       '- softness: ' + s.blur + 'px (blur — the penumbra)',
-      '- reach: ' + (s.reach/100).toFixed(1) + '× (scale)',
+      '- reach: ' + (s.reach/100).toFixed(2) + '× (scale)',
       '- wind: ' + (s.wind/100).toFixed(2) + ' (0 = still)',
       '- day tint: ' + s.day + ' (shadow ink ' + DAY_INKS[s.day] + ')',
       '- shadow falls on the content too: ' + (s.card ? 'yes' : 'no — behind content only'),
@@ -852,6 +861,7 @@
     ta.remove(); done(ok);
   }
   function copyText(text, btn){
+    document.getElementById('copyFallback').hidden = true;
     const done = function(ok){ flash(btn, ok, text); };
     if (navigator.clipboard && navigator.clipboard.writeText){
       navigator.clipboard.writeText(text).then(function(){ done(true); }, function(){ legacyCopy(text, done); });
