@@ -122,7 +122,8 @@
   .panel h2{font-size:13px; font-weight:600; font-family:var(--sans); letter-spacing:.18em;
     text-transform:uppercase; color:var(--quiet); margin:0 0 4px}
   .panel .group{padding:16px 0 14px; border-bottom:1px solid var(--hairline-soft)}
-  .panel .group:last-child{border-bottom:none; padding-bottom:4px}
+  /* the group just before the rail loses its hairline — keep the rail immediately after the last .group */
+  .panel .group:has(+ .rail){border-bottom:none; padding-bottom:4px}
   .label-row{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:9px}
   .label-row .name{font-size:14.5px}
   .label-row .name .hz{color:var(--quiet); margin-left:.45em; font-size:13px}
@@ -195,6 +196,13 @@
     position:absolute; left:calc(100% + 14px); top:0;
     display:flex; flex-direction:column; gap:10px;
   }
+  .rail-cap{
+    font-family:var(--sans); font-size:9.5px; font-weight:600;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--quiet);
+    text-align:center; line-height:1.5; margin-bottom:2px;
+  }
+  .rail-cap .hz{display:block; font-family:var(--serif); font-size:11px;
+    font-weight:400; letter-spacing:.3em; margin-top:2px; text-indent:.3em}
   .seal{
     width:52px; height:52px; border-radius:14px; cursor:pointer; padding:0;
     background:var(--panel); border:1px solid var(--hairline-soft);
@@ -211,11 +219,15 @@
     position:absolute; width:1px; height:1px; padding:0; margin:-1px;
     overflow:hidden; clip-path:inset(50%); white-space:nowrap;
   }
-  @media (max-width:1219px){
+  @media (max-width:1239px){
     .rail{
       position:static; flex-direction:row; justify-content:center;
       border-top:1px solid var(--hairline-soft); margin-top:14px; padding-top:16px;
+      flex-wrap:wrap;
     }
+    .rail-cap{flex:0 0 100%; margin-bottom:6px}
+    .rail-cap br{display:none}
+    .rail-cap .hz{display:inline; margin-left:.6em; text-indent:0}
   }
   .copy-fallback{
     width:100%; margin-top:10px; height:120px; resize:vertical;
@@ -360,6 +372,7 @@
       </div>
 
       <div class="rail" role="group" aria-label="take it home 土産">
+        <div class="rail-cap" aria-hidden="true">take it <br>home <span class="hz">土産</span></div>
         <button class="seal" id="regrow" title="another tree 再生"
           aria-label="another tree — regrow a new random tree">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v4h-4"/></svg>
