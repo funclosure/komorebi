@@ -55,10 +55,10 @@ control ranges remain untouched. Changes:
   `還很安靜——等著顏色到來。`, gathering line likewise).
 - Panel: heading THE LAYER, all label pairs flip primary/accent
   (`door 門 → 門 door`, `presence 濃 → 濃度 presence`, etc.), door segment
-  captions (BRANCH/DAPPLE/DRIFT → small-caps pinyin-free Chinese: 枝影/葉隙/疏影
-  as the en-caption slot), day swatch aria, toggle line
+  captions (BRANCH/DAPPLE/DRIFT → 樹枝/光斑/飄葉 in the en-caption slot;
+  枝影/葉隙/疏影 live in the phone captions instead), day swatch aria, toggle line
   (`shadow falls on the content too → 樹影也落在內容上`), rail caption
-  (`take it / home 土産 → 帶一片光回家`), seal tooltips/aria-labels.
+  (`take it / home 土産 → 帶光 / 回家 土産`), seal tooltips/aria-labels.
 - Phone captions under the mock (three door captions — already half hanzi).
 - The six field-note articles and the "Field notes" micro heading — full
   translations, sources/links unchanged.
