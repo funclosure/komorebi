@@ -1,4 +1,5 @@
 <!doctype html>
+<html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍃</text></svg>">
@@ -912,7 +913,7 @@
       footer1: { en:'Prototype only — three doors, one paper. Next step: pick a door, then port the winner as a\n  seeded generator behind a native canvas compositor (SwiftUI <code>Canvas</code>, Jetpack Compose,\n  or plain layers). The extraction door — lifting leaf silhouettes from the user\'s own photos —\n  stays open as a second source feeding the same compositor.',
                  zh:'僅為原型——三扇門，一張紙。下一步：選定一扇門，把贏家移植成有種子的產生器，放在原生畫布合成器之後（SwiftUI <code>Canvas</code>、Jetpack Compose 或純圖層）。抽取之門——從使用者自己的照片裡取出葉影——仍然敞開，作為餵給同一個合成器的第二個光源。' },
       footer2: { en:'Open source at\n  <a href="https://github.com/funclosure/komorebi">github.com/funclosure/komorebi</a> ·\n  born from <a href="https://gist.github.com/funclosure/ed79bf5abfcf0d3ba1f6561615469c6b">the original gist</a>.',
-                 zh:'開源於 <a href="https://github.com/funclosure/komorebi">github.com/funclosure/komorebi</a>·源自<a href="https://gist.github.com/funclosure/ed79bf5abfcf0d3ba1f6561615469c6b">最初的 gist</a>。' }
+                 zh:'開源於 <a href="https://github.com/funclosure/komorebi">github.com/funclosure/komorebi</a> · 源自 <a href="https://gist.github.com/funclosure/ed79bf5abfcf0d3ba1f6561615469c6b">最初的 gist</a>。' }
     },
     actions: {
       regrow: { title:{ en:'another tree 再生', zh:'再長一棵 再生' },
@@ -922,6 +923,22 @@
       copyLink: { title:{ en:'copy this light 光を共有', zh:'複製這道光 光を共有' },
                   aria:{ en:'copy this light — a URL that reproduces this exact state', zh:'複製這道光——一條能重現此刻狀態的網址' } }
     },
+    attrs: [
+      { sel:'.panel', en:'shadow controls', zh:'樹影控制' },
+      { sel:'.segments', en:'shadow variant', zh:'樹影款式' },
+      { sel:'#presence', en:'shadow presence', zh:'濃度' },
+      { sel:'#blur', en:'shadow softness', zh:'柔和' },
+      { sel:'#scale', en:'shadow scale', zh:'幅度' },
+      { sel:'#wind', en:'wind strength', zh:'風力' },
+      { sel:'.swatches', en:'day color', zh:'日色' },
+      { sel:'.sw[data-tint="empty"]', en:'empty day', zh:'空日' },
+      { sel:'.sw[data-tint="gold"]', en:'gold day', zh:'金色的日子' },
+      { sel:'.sw[data-tint="sage"]', en:'sage day', zh:'草綠的日子' },
+      { sel:'.sw[data-tint="dusk"]', en:'dusk day', zh:'暮色的日子' },
+      { sel:'.rail', en:'take it home 土産', zh:'帶光回家 土産' },
+      { sel:'#copyFallback', en:'copy manually — automatic copy failed', zh:'自動複製失敗——請手動複製' },
+      { sel:'#langToggle', en:'switch language', zh:'切換語言' }
+    ],
     wind: { still:{en:'still',zh:'靜'}, breath:{en:'breath',zh:'息'}, breeze:{en:'breeze',zh:'微風'}, wind:{en:'wind',zh:'風'} },
     stateline: {
       empty: { en:'Still quiet — waiting for color.', zh:'還很安靜——等著顏色到來。' },
@@ -960,6 +977,10 @@
       const el = document.getElementById(id), a = I18N.actions[id];
       el.title = a.title[k];
       el.setAttribute('aria-label', a.aria[k]);
+    });
+    I18N.attrs.forEach(function(a){
+      const el = document.querySelector(a.sel);
+      if (el) el.setAttribute('aria-label', a[k]);
     });
     document.getElementById('langToggle').textContent = lang === 'zh-tw' ? 'EN' : '中文';
     refreshDynamic();
